@@ -17,6 +17,7 @@ int main(void) {
 	puts("!!!Hello World!!!"); /* prints !!!Hello World!!! */
 
 	int n, k, m, execution_count;
+	time_t t;
 
 	// user input for matrix dimensions n, k and m
 	printf("\nSpecify matrix dimensions...\n");
@@ -26,6 +27,10 @@ int main(void) {
 	scanf("%d", &k);
 	printf(">> Matrix B col count: ");
 	scanf("%d", &m);
+
+	float A[n][k];
+	float B[k][m];
+	float C[n][m];
 
 	// user input for number of iteration of program execution
 	printf("\nSpecify number of program execution iterations: ");
@@ -38,9 +43,25 @@ int main(void) {
 
 		// randomly generate matrix A with dimension n x k
 		printf(">> Generating random matrix A...\n");
+		srand((unsigned) time(&t));
+		for (int row = 0; row < n; row++) {
+			for (int col = 0; col < k; col++) {
+				A[row][col] = rand() % 101;
+				printf("%f ", A[row][col]);
+			}
+			printf("\n");
+		}
 
 		// randomly generate matrix B with dimension k x m
 		printf(">> Generating random matrix B...\n");
+		srand((unsigned) time(&t));
+		for (int row = 0; row < k; row++) {
+			for (int col = 0; col < m; col++) {
+				B[row][col] = rand() % 101;
+				printf("%f ", B[row][col]);
+			}
+			printf("\n");
+		}
 
 		// call intermediate function for multiplying matrices A and B using global memory
 		printf(">> Executing kernel function matmul_rec_glob...\n");
