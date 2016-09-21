@@ -13,6 +13,14 @@
 #include <time.h>
 #include <math.h>
 
+// write kernel function matmul_rec_shar
+
+// write intermediate function for kernel function matmul_rec_shar
+
+// write kernel function matmul_rec_glob
+
+// write intermediate function for kernel function matmul_rec_glob
+
 int main(void) {
 	puts("!!!Hello World!!!"); /* prints !!!Hello World!!! */
 
