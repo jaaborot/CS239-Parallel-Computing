@@ -24,11 +24,22 @@ void matmul_rec_glob(float* A_device, float* B_device, float* C_device, int bloc
 }
 
 // write intermediate function for kernel function matmul_rec_glob
-int host_matmul_rec_glob(float* A_host, float* B_host, float* C_host, int n_, int k_, int m_){
+int host_matmul_rec_glob(float* A_host, float* B_host, float* C_host, int n_rows, int k_cols_rows, int m_cols){
 	printf(">>>> Executing intermediate function host_matmul_rec_glob...\n");
 
 	// set execution configuration parameters
 	printf(">>>> Setting execution configuration parameters...\n");
+	int warp_size = 32;
+	int gridDim_x = (int)ceil((float) k_cols_rows / warp_size); /* number of blocks in the grid's x dimension */
+	int gridDim_y = (int)ceil((float) n_rows / warp_size); /* number of blocks in the grid's y dimension */
+	int blockDim_x = warp_size; /* number of threads in a block's x dimension */
+	int blockDim_y = warp_size; /* number of threads in a block's y dimension */
+
+	printf("warp size: %d\n", warp_size);
+	printf("Number of blocks along x dim in grid: %d\n", gridDim_x);
+	printf("Number of blocks along y dim in grid: %d\n", gridDim_y);
+	printf("Number of threads along x dim in block %d\n", blockDim_x);
+	printf("Number of threads along y dim in block %d\n", blockDim_y);
 
 	// allocate device memory
 	printf(">>>> Allocating device memory...\n");
@@ -38,6 +49,24 @@ int host_matmul_rec_glob(float* A_host, float* B_host, float* C_host, int n_, in
 
 	// execute kernel function matmul_rec_glob
 	printf(">>>> Executing kernel function matmul_rec_glob...\n");
+	for(int blockIdx_y = 0; blockIdx_y < gridDim_y; blockIdx_y++){
+		for(int blockIdx_x = 0; blockIdx_x < gridDim_x; blockIdx_x++){
+			for(int threadIdx_y = 0; threadIdx_y < blockDim_y; threadIdx_y++){
+				for(int threadIdx_x = 0; threadIdx_x < blockDim_x; threadIdx_x++){
+					int row = blockDim_y * blockIdx_y + threadIdx_y;
+					int col = blockDim_x * blockIdx_x + threadIdx_x;
+					if(row < n_rows && col < m_cols){
+						C_host[row * m_cols + col] = 0.0;
+						for(int cols_rows_counter = 0; cols_rows_counter < k_cols_rows; cols_rows_counter++){
+							C_host[row * m_cols + col] += A_host[row * k_cols_rows + cols_rows_counter] * B_host[cols_rows_counter * m_cols + col];
+						}
+						printf("C[%d * %d + %d = %d]: %f \n", row, m_cols, col, row * m_cols + col, C_host[row * m_cols + col]);
+	//					C[row][col] = sum_{i=0}^{k-1} A[row][i]*B[i][col];
+					}
+				}
+			}
+		}
+	}
 
 	// record execution time of kernel function
 	printf(">>>> Recording execution time of kernel function matmul_rec_glob...\n");
@@ -106,6 +135,12 @@ int main(void) {
 		// call intermediate function for multiplying matrices A and B using global memory
 		printf(">> Executing intermediate function for kernel function matmul_rec_glob...\n");
 		kernel_times[execution_counter][0] = host_matmul_rec_glob((float*) A, (float*) B, (float*) C, n, k, m);
+		for(int row = 0; row < n; row++){
+			for(int col = 0; col < m; col++){
+				printf("%f ", C[row][col]);
+			}
+			printf("\n");
+		}
 
 		// store execution time of kernel function matmul_rec_glob
 		printf(">> Storing execution time of kernel function matmul_rec_glob\n");
