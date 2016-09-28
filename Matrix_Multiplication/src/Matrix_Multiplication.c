@@ -104,26 +104,26 @@ int host_matmul_rec_shar(float* A_host, float* B_host, float* C_host, int n_rows
 				float B_device_shared[tile_width][tile_width];
 
 				// load all subset data from current tile in input matrices A and B
-				printf(">>>> Loading data from A[%d,%d]-A[%d,%d]-A[%d,%d]-A[%d,%d] and B[%d,%d]-B[%d,%d]-B[%d,%d]-B[%d,%d] into shared memory...\n",
-						(blockDim_y * blockIdx_y), (blockDim_x * blockIdx_x),
-						(blockDim_y * blockIdx_y), (blockDim_x * blockIdx_x + (tile_width - 1)),
-						(blockDim_y * blockIdx_y + (tile_width - 1)), (blockDim_x * blockIdx_x),
-						(blockDim_y * blockIdx_y + (tile_width - 1)), (blockDim_x * blockIdx_x + (tile_width - 1)),
-						(blockDim_y * blockIdx_y), (blockDim_x * blockIdx_x),
-						(blockDim_y * blockIdx_y), (blockDim_x * blockIdx_x + (tile_width - 1)),
-						(blockDim_y * blockIdx_y + (tile_width - 1)), (blockDim_x * blockIdx_x),
-						(blockDim_y * blockIdx_y + (tile_width - 1)), (blockDim_x * blockIdx_x + (tile_width - 1))
-					  );
+//				printf(">>>> Loading data from A[%d,%d]-A[%d,%d]-A[%d,%d]-A[%d,%d] and B[%d,%d]-B[%d,%d]-B[%d,%d]-B[%d,%d] into shared memory...\n",
+//						(blockDim_y * blockIdx_y), (blockDim_x * blockIdx_x),
+//						(blockDim_y * blockIdx_y), (blockDim_x * blockIdx_x + (tile_width - 1)),
+//						(blockDim_y * blockIdx_y + (tile_width - 1)), (blockDim_x * blockIdx_x),
+//						(blockDim_y * blockIdx_y + (tile_width - 1)), (blockDim_x * blockIdx_x + (tile_width - 1)),
+//						(blockDim_y * blockIdx_y), (blockDim_x * blockIdx_x),
+//						(blockDim_y * blockIdx_y), (blockDim_x * blockIdx_x + (tile_width - 1)),
+//						(blockDim_y * blockIdx_y + (tile_width - 1)), (blockDim_x * blockIdx_x),
+//						(blockDim_y * blockIdx_y + (tile_width - 1)), (blockDim_x * blockIdx_x + (tile_width - 1))
+//					  );
 
 
-				printf("C block [%d,%d], Phase #%d...\n", blockIdx_x, blockIdx_y, phase_counter);
+//				printf("C block [%d,%d], Phase #%d...\n", blockIdx_x, blockIdx_y, phase_counter);
 				int A_block_start_element = (phase_counter * tile_width) + (blockIdx_y * (tile_width * k_cols_rows));
 				int B_block_start_element = (blockIdx_x * tile_width) + (phase_counter * (tile_width * m_cols));
-				printf("blockIdx_y: %d\n", blockIdx_y);
-				printf("blockIdx_x: %d\n", blockIdx_x);
-				printf("phase_counter: %d\n", phase_counter);
-				printf("Matrix A start element: %d\n", A_block_start_element);
-				printf("Matrix B start element: %d\n", B_block_start_element);
+//				printf("blockIdx_y: %d\n", blockIdx_y);
+//				printf("blockIdx_x: %d\n", blockIdx_x);
+//				printf("phase_counter: %d\n", phase_counter);
+//				printf("Matrix A start element: %d\n", A_block_start_element);
+//				printf("Matrix B start element: %d\n", B_block_start_element);
 
 				for(int threadIdx_y = 0; threadIdx_y < tile_width; threadIdx_y++){
 					for(int threadIdx_x = 0; threadIdx_x < tile_width; threadIdx_x++){
@@ -175,7 +175,7 @@ int host_matmul_rec_shar(float* A_host, float* B_host, float* C_host, int n_rows
 //				}
 
 				// compute using loaded subset data on current tile of input matrices A and B
-				printf(">>>> Computing subset of output matrix using data in block\n");
+//				printf(">>>> Computing subset of output matrix using data in block\n");
 				for(int threadIdx_y = 0; threadIdx_y < tile_width; threadIdx_y++){
 					for(int threadIdx_x = 0; threadIdx_x < tile_width; threadIdx_x++){
 
@@ -190,17 +190,17 @@ int host_matmul_rec_shar(float* A_host, float* B_host, float* C_host, int n_rows
 					}
 				}
 
-				printf("C_device:\n");
-				for(int threadIdx_y = 0; threadIdx_y < blockDim_y; threadIdx_y++){
-					for(int threadIdx_x = 0; threadIdx_x < blockDim_x; threadIdx_x++){
-						int row = blockDim_y * blockIdx_y + threadIdx_y;
-						int col = blockDim_x * blockIdx_x + threadIdx_x;
-						if(row < n_rows && col < m_cols){
-							printf("%f ", C_device[row * m_cols + col]);
-						}
-					}
-					printf("\n");
-				}
+//				printf("C_device:\n");
+//				for(int threadIdx_y = 0; threadIdx_y < blockDim_y; threadIdx_y++){
+//					for(int threadIdx_x = 0; threadIdx_x < blockDim_x; threadIdx_x++){
+//						int row = blockDim_y * blockIdx_y + threadIdx_y;
+//						int col = blockDim_x * blockIdx_x + threadIdx_x;
+//						if(row < n_rows && col < m_cols){
+//							printf("%f ", C_device[row * m_cols + col]);
+//						}
+//					}
+//					printf("\n");
+//				}
 			}
 		}
 	}
@@ -219,7 +219,7 @@ int host_matmul_rec_shar(float* A_host, float* B_host, float* C_host, int n_rows
 
 // write kernel function matmul_rec_glob
 void matmul_rec_glob(float* A_device, float* B_device, float* C_device, int n_rows, int k_cols_rows, int m_cols, int blockDim_x, int blockDim_y, int blockIdx_x, int blockIdx_y, int threadIdx_x, int threadIdx_y){
-	printf(">>>>>>>> Executing kernel function matmul_rec_glob...\n");
+//	printf(">>>>>>>> Executing kernel function matmul_rec_glob...\n");
 	int row = blockDim_y * blockIdx_y + threadIdx_y;
 	int col = blockDim_x * blockIdx_x + threadIdx_x;
 	if(row < n_rows && col < m_cols){
@@ -227,7 +227,7 @@ void matmul_rec_glob(float* A_device, float* B_device, float* C_device, int n_ro
 		for(int cols_rows_counter = 0; cols_rows_counter < k_cols_rows; cols_rows_counter++){
 			C_device[row * m_cols + col] += A_device[row * k_cols_rows + cols_rows_counter] * B_device[cols_rows_counter * m_cols + col];
 		}
-		printf("C[%d * %d + %d = %d]: %f \n", row, m_cols, col, row * m_cols + col, C_device[row * m_cols + col]);
+//		printf("C[%d * %d + %d = %d]: %f \n", row, m_cols, col, row * m_cols + col, C_device[row * m_cols + col]);
 	}
 }
 
@@ -314,7 +314,8 @@ int main(void) {
 
 	float A[n][k];
 	float B[k][m];
-	float C[n][m];
+	float C_glob[n][m];
+	float C_shar[n][m];
 	float kernel_times[execution_count][2];
 
 	printf("\nn = %d, k = %d, m = %d, execution count = %d\n\n", n, k, m, execution_count);
@@ -347,19 +348,21 @@ int main(void) {
 		// initializing matrix C
 		for (int row = 0; row < n; row++) {
 			for (int col = 0; col < m; col++) {
-				C[row][col] = 0.0;
+				C_glob[row][col] = 0.0;
+				C_shar[row][col] = 0.0;
 			}
 		}
 
 		// call intermediate function for multiplying matrices A and B using global memory
 		printf(">> Executing intermediate function for kernel function matmul_rec_glob...\n");
-//		kernel_times[execution_counter][0] = host_matmul_rec_glob((float*) A, (float*) B, (float*) C, n, k, m);
-//		for(int row = 0; row < n; row++){
-//			for(int col = 0; col < m; col++){
-//				printf("%f ", C[row][col]);
-//			}
-//			printf("\n");
-//		}
+		kernel_times[execution_counter][0] = host_matmul_rec_glob((float*) A, (float*) B, (float*) C_glob, n, k, m);
+		printf("C_glob:\n");
+		for(int row = 0; row < n; row++){
+			for(int col = 0; col < m; col++){
+				printf("%f ", C_glob[row][col]);
+			}
+			printf("\n");
+		}
 
 		// store execution time of kernel function matmul_rec_glob
 		printf(">> Storing execution time of kernel function matmul_rec_glob\n");
@@ -369,13 +372,24 @@ int main(void) {
 
 		// call intermediate function for multiplying matrices A and B using shared memory
 		printf(">> Executing intermediate function for kernel function matmul_rec_shar...\n");
-		kernel_times[execution_counter][0] = host_matmul_rec_shar((float*) A, (float*) B, (float*) C, n, k, m);
-		printf("C:\n");
+		kernel_times[execution_counter][0] = host_matmul_rec_shar((float*) A, (float*) B, (float*) C_shar, n, k, m);
+		printf("C_shar:\n");
 		for(int row = 0; row < n; row++){
 			for(int col = 0; col < m; col++){
-				printf("%f ", ((float*)C)[row * m + col]);
+				printf("%f ", ((float*)C_shar)[row * m + col]);
 			}
 			printf("\n");
+		}
+
+		// check for mismatch between to output matrices
+		printf(">> Checking for any mismatches between C_glob and C_shar...\n");
+		for(int row = 0; row < n; row++){
+			for(int col = 0; col < m; col++){
+				if(C_glob[row][col] != C_shar[row][col]){
+					printf("A mismatch occurs between C_glob and C_shar in element at coordinate (%d,%d).\n", row, col);
+					return 1;
+				}
+			}
 		}
 
 		// store execution time of kernel function matmul_rec_shar
