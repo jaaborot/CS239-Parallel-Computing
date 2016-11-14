@@ -26,6 +26,11 @@
 #define WRITE_AVERAGE_TIMES_TO_FILE // write averages of running time results of program execution to file
 //#define EXECUTE_ON_CPU // multiply matrices on CPU
 
+// Specification of program mode. Only one mode should be defined during each program execution.
+//#define EXPONENTIAL_STEP_INCREASE // first main function
+//#define LINEAR_STEP_INCREASE // second main function
+#define NO_STEP_INCREASE // third main function
+
 #define CudaSafeCall( err )       __cudaSafeCall( err, __FILE__, __LINE__ ) // https://codeyarns.com/2011/03/02/how-to-do-error-checking-in-cuda/
 #define CudaCheckError()          __cudaCheckError( __FILE__, __LINE__ ) // https://codeyarns.com/2011/03/02/how-to-do-error-checking-in-cuda/
 #define WriteRunningTimesToFile(table, execution_count, n, k, m, file_name, mode) __writeRunningTimesToFile(table, execution_count, n, k, m, file_name, mode)
@@ -675,103 +680,593 @@ float matmul_rec_cpu(float** A_host, float** B_host, float** C_host, int n_rows,
 	return (float) ((t_end - t_start) * 1000);
 }
 
-#if MULTIPLE_DIMENSIONS
-int main(void)
-{
-	puts("Start.\n"); /* prints !!!Hello World!!! */
-
-	int n, k, m, execution_count;
-	int max_exponent;
-	time_t t;
-
-	// user input for matrix dimensions n, k and m
-	printf(
-			"Let A be a n x k matrix, B a k x m matrix. Output matrix C = A dot B.\n");
-	printf(
-			"Specify maximum exponent x where n = m = 2^x (square matrix output C)...\n>> ");
-	scanf("%d", &max_exponent);
-	printf("The program will be executed for each n = m = 2");
-	if ((int) max_exponent > 1)
+#ifdef EXPONENTIAL_STEP_INCREASE
+	int main(void)
 	{
-		printf(" to %d...\n", (int) pow(2, max_exponent));
-	}
-	else
-	{
-		printf(".\n");
-	}
-	printf("max_exponent: %d\n", max_exponent);
-	printf("Specify k...\n>> ");
-	scanf("%d", &k);
+		puts("Start.\n"); /* prints !!!Hello World!!! */
 
-	// user input for number of iteration of program execution
-	printf(
-			"\nSpecify number of program execution iteration per dimension of C: ");
-	scanf("%d", &execution_count);
+		int n, k, m, execution_count;
+		int max_exponent;
+		time_t t;
 
-	float kernel_times[execution_count][4];
-	float average_times[max_exponent][4];
-	int exec_code;
-
-	for (int power_counter = 1; power_counter <= max_exponent; power_counter++)
-	{
-		n = m = (int) pow(2, power_counter);
-
-		/* Since we vary the values for n and m in each iteration for each power of 2,
-		 * we use dynamic allocation for the dimensions of the 2D arrays for A, B,
-		 * C_glob and C_shar using double pointer method.
-		 */
-		// dynamically allocate memory for an array of row number of pointers
-		float** A_ptr = (float**) malloc(n * sizeof(float*));
-		// for each row, dynamically allocate memory enough for each row
-		for (int i = 0; i < n; ++i)
-		{
-			A_ptr[i] = (float*) malloc(k * sizeof(float));
-		}
-
-		// dynamically allocate memory for an array of row number of pointers
-		float** B_ptr = (float**) malloc(k * sizeof(float*));
-		// for each row, dynamically allocate memory enough for each row
-		for (int i = 0; i < k; ++i)
-		{
-			B_ptr[i] = (float*) malloc(m * sizeof(float));
-		}
-
-		// dynamically allocate memory for an array of row number of pointers
-		float** C_cpu_ptr = (float**) malloc(n * sizeof(float*));
-		// for each row, dynamically allocate memory enough for each row
-		for (int i = 0; i < n; ++i)
-		{
-			C_cpu_ptr[i] = (float*) malloc(m * sizeof(float));
-		}
-
-		// dynamically allocate memory for an array of row number of pointers
-		float** C_glob_ptr = (float**) malloc(n * sizeof(float*));
-		// for each row, dynamically allocate memory enough for each row
-		for (int i = 0; i < n; ++i)
-		{
-			C_glob_ptr[i] = (float*) malloc(m * sizeof(float));
-		}
-
-		// dynamically allocate memory for an array of row number of pointers
-		float** C_shar_ptr = (float**) malloc(n * sizeof(float*));
-		// for each row, dynamically allocate memory enough for each row
-		for (int i = 0; i < n; ++i)
-		{
-			C_shar_ptr[i] = (float*) malloc(m * sizeof(float));
-		}
-
+		// user input for matrix dimensions n, k and m
 		printf(
-				"\nParameter values: n = %d, k = %d, m = %d, execution_count = %d\n\n",
-				n, k, m, execution_count);
-
-		for (int execution_counter = 0; execution_counter < execution_count;
-				execution_counter++)
+				"Let A be a n x k matrix, B a k x m matrix. Output matrix C = A dot B.\n");
+		printf(
+				"Specify maximum exponent x where n = m = 2^x (square matrix output C)...\n>> ");
+		scanf("%d", &max_exponent);
+		printf("The program will be executed for each n = m = 2");
+		if ((int) max_exponent > 1)
 		{
+			printf(" to %d...\n", (int) pow(2, max_exponent));
+		}
+		else
+		{
+			printf(".\n");
+		}
+		printf("max_exponent: %d\n", max_exponent);
+		printf("Specify k...\n>> ");
+		scanf("%d", &k);
 
-			printf("==== Program execution iteration #%d ====\n",
-					execution_counter + 1);
-			kernel_times[execution_counter][0] =
-					(float) (execution_counter + 1);
+		// user input for number of iteration of program execution
+		printf(
+				"\nSpecify number of program execution iteration per dimension of C: ");
+		scanf("%d", &execution_count);
+
+		float kernel_times[execution_count][4];
+		float average_times[max_exponent][4];
+		int exec_code;
+
+		for (int power_counter = 1; power_counter <= max_exponent; power_counter++)
+		{
+			n = m = (int) pow(2, power_counter);
+
+			/* Since we vary the values for n and m in each iteration for each power of 2,
+			 * we use dynamic allocation for the dimensions of the 2D arrays for A, B,
+			 * C_glob and C_shar using double pointer method.
+			 */
+			// dynamically allocate memory for an array of row number of pointers
+			float** A_ptr = (float**) malloc(n * sizeof(float*));
+			// for each row, dynamically allocate memory enough for each row
+			for (int i = 0; i < n; ++i)
+			{
+				A_ptr[i] = (float*) malloc(k * sizeof(float));
+			}
+
+			// dynamically allocate memory for an array of row number of pointers
+			float** B_ptr = (float**) malloc(k * sizeof(float*));
+			// for each row, dynamically allocate memory enough for each row
+			for (int i = 0; i < k; ++i)
+			{
+				B_ptr[i] = (float*) malloc(m * sizeof(float));
+			}
+
+			// dynamically allocate memory for an array of row number of pointers
+			float** C_cpu_ptr = (float**) malloc(n * sizeof(float*));
+			// for each row, dynamically allocate memory enough for each row
+			for (int i = 0; i < n; ++i)
+			{
+				C_cpu_ptr[i] = (float*) malloc(m * sizeof(float));
+			}
+
+			// dynamically allocate memory for an array of row number of pointers
+			float** C_glob_ptr = (float**) malloc(n * sizeof(float*));
+			// for each row, dynamically allocate memory enough for each row
+			for (int i = 0; i < n; ++i)
+			{
+				C_glob_ptr[i] = (float*) malloc(m * sizeof(float));
+			}
+
+			// dynamically allocate memory for an array of row number of pointers
+			float** C_shar_ptr = (float**) malloc(n * sizeof(float*));
+			// for each row, dynamically allocate memory enough for each row
+			for (int i = 0; i < n; ++i)
+			{
+				C_shar_ptr[i] = (float*) malloc(m * sizeof(float));
+			}
+
+			printf(
+					"\nParameter values: n = %d, k = %d, m = %d, execution_count = %d\n\n",
+					n, k, m, execution_count);
+
+			for (int execution_counter = 0; execution_counter < execution_count;
+					execution_counter++)
+			{
+
+				printf("==== Program execution iteration #%d ====\n",
+						execution_counter + 1);
+				kernel_times[execution_counter][0] =
+						(float) (execution_counter + 1);
+
+				// randomly generate matrix A with dimension n x k
+				printf(">> Generating random matrix A...\n");
+				srand((unsigned) time(&t));
+				for (int row = 0; row < n; row++)
+				{
+					for (int col = 0; col < k; col++)
+					{
+						A_ptr[row][col] = (float) (rand() % 101);
+					}
+				}
+
+	#ifdef TRACE_LOGS
+				for (int row = 0; row < n; row++)
+				{
+					for (int col = 0; col < k; col++)
+					{
+						printf("%f ", A_ptr[row][col]);
+					}
+					printf("\n");
+				}
+	#endif
+
+				// randomly generate matrix B with dimension k x m
+				printf(">> Generating random matrix B...\n");
+				srand((unsigned) time(&t));
+				for (int row = 0; row < k; row++)
+				{
+					for (int col = 0; col < m; col++)
+					{
+						B_ptr[row][col] = (float) (rand() % 100);
+					}
+				}
+	#ifdef TRACE_LOGS
+				for (int row = 0; row < k; row++)
+				{
+					for (int col = 0; col < m; col++)
+					{
+						printf("%f ", B_ptr[row][col]);
+					}
+					printf("\n");
+				}
+	#endif
+
+				// initializing matrix C
+				for (int row = 0; row < n; row++)
+				{
+					for (int col = 0; col < m; col++)
+					{
+						C_cpu_ptr[row][col] = 0.0;
+						C_glob_ptr[row][col] = 0.0;
+						C_shar_ptr[row][col] = 0.0;
+					}
+				}
+
+				// call function for multiplying matrices A and B using CPU only
+				printf(">> Executing computation on CPU...\n");
+	#ifdef EXECUTE_ON_CPU
+				kernel_times[execution_counter][1] = matmul_rec_cpu((float**) A_ptr, (float**) B_ptr, (float**) C_cpu_ptr, n, k, m);
+	#else
+				kernel_times[execution_counter][1] = 0.0;
+	#endif
+
+	#ifdef TRACE_LOGS
+				printf("C_cpu:\n");
+				for(int row = 0; row < n; row++)
+				{
+					for(int col = 0; col < m; col++)
+					{
+						printf("%f ", C_cpu_ptr[row][col]);
+					}
+					printf("\n");
+				}
+	#endif
+
+				// call intermediate function for multiplying matrices A and B using global memory
+				printf(
+						">> Executing intermediate function for kernel function matmul_rec_glob...\n");
+				kernel_times[execution_counter][2] = host_matmul_rec_glob(
+						(float**) A_ptr, (float**) B_ptr, (float**) C_glob_ptr, n,
+						k, m); // using pointers
+	#ifdef TRACE_LOGS
+						printf("C_glob:\n");
+						for(int row = 0; row < n; row++)
+						{
+							for(int col = 0; col < m; col++)
+							{
+								printf("%f ", C_glob_ptr[row][col]);
+							}
+							printf("\n");
+						}
+	#endif
+
+				// call intermediate function for multiplying matrices A and B using shared memory
+				printf(
+						">> Executing intermediate function for kernel function matmul_rec_shar...\n");
+				kernel_times[execution_counter][3] = host_matmul_rec_shar(
+						(float**) A_ptr, (float**) B_ptr, (float**) C_shar_ptr, n,
+						k, m); // using pointers
+	#ifdef TRACE_LOGS
+						printf("C_shar:\n");
+						for(int row = 0; row < n; row++)
+						{
+							for(int col = 0; col < m; col++)
+							{
+								printf("%f ", C_shar_ptr[row][col]);
+							}
+							printf("\n");
+						}
+	#endif
+				// check for mismatch between to output matrices
+				printf(
+						">> Checking for any mismatches between C_cpu, C_glob and C_shar...\n");
+	#ifdef EXECUTE_ON_CPU
+				for(int row = 0; row < n; row++)
+				{
+					for(int col = 0; col < m; col++)
+					{
+						if(C_cpu_ptr[row][col] != C_glob_ptr[row][col])
+						{
+							printf("A mismatch occurs between C_cpu and C_glob in element at coordinate (%d,%d).\n", row, col);
+							return 1;
+						}
+						else if(C_cpu_ptr[row][col] != C_shar_ptr[row][col])
+						{
+							printf("A mismatch occurs between C_cpu and C_shar in element at coordinate (%d,%d).\n", row, col);
+							return 1;
+						}
+					}
+				}
+	#else
+				for (int row = 0; row < n; row++)
+				{
+					for (int col = 0; col < m; col++)
+					{
+						if (C_glob_ptr[row][col] != C_shar_ptr[row][col])
+						{
+							printf(
+									"A mismatch occurs between C_glob and C_shar in element at coordinate (%d,%d).\n",
+									row, col);
+							return 1;
+						}
+					}
+				}
+	#endif
+				printf(">> Resulting matrices matched...\n");
+			}
+
+			// free memory allocation for A, B, C_glob and C_shar
+			free(A_ptr);
+			free(B_ptr);
+			free(C_cpu_ptr);
+			free(C_glob_ptr);
+			free(C_shar_ptr);
+
+	#ifdef WRITE_RUNNING_TIMES_TO_FILE
+			// write to CSV file the execution time of each kernel for current iteration
+			printf(">> Writing execution time of each kernel into CSV file...\n\n");
+			exec_code = WriteRunningTimesToFile((float* ) kernel_times,
+					execution_count, n, k, m, "aborot-exer2.csv", FILE_WRITE_MODE);
+			if (exec_code == 1)
+			{
+				return EXIT_FAILURE;
+			}
+	#endif
+			// compute for average execution time of kernel functions for current n and m
+			float total_times_cpu = 0.0;
+			float total_times_glob = 0.0;
+			float total_times_shar = 0.0;
+			for (int i = 0; i < execution_count; i++)
+			{
+				total_times_cpu += kernel_times[i][1];
+				total_times_glob += kernel_times[i][2];
+				total_times_shar += kernel_times[i][3];
+			}
+			average_times[power_counter - 1][0] = pow(2, power_counter);
+			average_times[power_counter - 1][1] = total_times_cpu
+					/ (float) execution_count;
+			average_times[power_counter - 1][2] = total_times_glob
+					/ (float) execution_count;
+			average_times[power_counter - 1][3] = total_times_shar
+					/ (float) execution_count;
+
+			printf(
+					"\npower: %d | total_times_cpu: %f ms | total_times_glob: %f ms | total_times_shar: %f ms | average_cpu: %f ms | average_glob: %f ms | average_shar: %f ms\n\n",
+					power_counter, total_times_cpu, total_times_glob,
+					total_times_shar, average_times[power_counter - 1][1],
+					average_times[power_counter - 1][2],
+					average_times[power_counter - 1][3]);
+		}
+
+		// write to CSV file the average execution times for all n and m
+	#ifdef WRITE_AVERAGE_TIMES_TO_FILE
+		printf(
+				"Writing average execution times of each kernel per dimension n, m...\n");
+		for (int i = 0; i < max_exponent; i++)
+		{
+			printf("n = m = %d: %f ms, %f ms, %f ms\n", (int) average_times[i][0],
+					average_times[i][1], average_times[i][2], average_times[i][3]);
+		}
+		exec_code = WriteAverageTimesToFile((float* ) average_times, max_exponent,
+				"aborot-exer2.csv", FILE_WRITE_MODE);
+		if (exec_code == 1)
+		{
+			return EXIT_FAILURE;
+		}
+	#endif
+
+		printf(">> End.\n");
+
+		return EXIT_SUCCESS;
+	}
+
+#elif LINEAR_STEP_INCREASE
+
+	int main(void)
+	{
+		int n, k, m, step_count, step_increase, execution_count, exec_code;
+		time_t t;
+
+		printf("Specify initial row count n: ");
+		scanf("%d", &n);
+		printf("Specify initial column count m: ");
+		scanf("%d", &m);
+		printf("Specify initial count k: ");
+		scanf("%d", &k);
+		printf("Specify step increase value: ");
+		scanf("%d", &step_increase);
+		printf("Specify number of steps to increase for this computation: ");
+		scanf("%d", &step_count);
+		printf("Specify number of times to execute the computation: ");
+		scanf("%d", &execution_count);
+
+		float average_times[step_count][4];
+		for (int step_counter = 0; step_counter < step_count; ++step_counter)
+		{
+			printf("n: %d, k: %d, m: %d, execution_count: %d\n", n, k, m, execution_count);
+
+			// start computation
+			float kernel_times[execution_count][4];
+			for (int execution_counter = 0; execution_counter < execution_count; ++execution_counter)
+			{
+				/*
+				 * Allocate memory locations in host.
+				 */
+				float** A_ptr = (float**) malloc(n * sizeof(float*));
+				for (int i = 0; i < n; ++i)
+				{
+					A_ptr[i] = (float*) malloc(k * sizeof(float));
+				}
+
+				float** B_ptr = (float**) malloc(k * sizeof(float*));
+				for (int i = 0; i < k; ++i)
+				{
+					B_ptr[i] = (float*) malloc(m * sizeof(float));
+				}
+
+				float** C_cpu_ptr = (float**) malloc(n * sizeof(float*));
+				for (int i = 0; i < n; ++i)
+				{
+					C_cpu_ptr[i] = (float*) malloc(m * sizeof(float));
+				}
+
+				float** C_glob_ptr = (float**) malloc(n * sizeof(float*));
+				for (int i = 0; i < n; ++i)
+				{
+					C_glob_ptr[i] = (float*) malloc(m * sizeof(float));
+				}
+
+				float** C_shar_ptr = (float**) malloc(n * sizeof(float*));
+				for (int i = 0; i < n; ++i)
+				{
+					C_shar_ptr[i] = (float*) malloc(m * sizeof(float));
+				}
+
+				// randomly generate matrix A with dimension n x k
+				printf(">> Generating random matrix A...\n");
+				srand((unsigned) time(&t));
+				for (int row = 0; row < n; row++)
+				{
+					for (int col = 0; col < k; col++)
+					{
+						A_ptr[row][col] = (float) (rand() % 101);
+					}
+				}
+
+		#ifdef TRACE_LOGS
+				for (int row = 0; row < n; row++)
+				{
+					for (int col = 0; col < k; col++)
+					{
+						printf("%f ", A_ptr[row][col]);
+					}
+					printf("\n");
+				}
+		#endif
+
+				// randomly generate matrix B with dimension k x m
+				printf(">> Generating random matrix B...\n");
+				srand((unsigned) time(&t));
+				for (int row = 0; row < k; row++)
+				{
+					for (int col = 0; col < m; col++)
+					{
+						B_ptr[row][col] = (float) (rand() % 100);
+					}
+				}
+		#ifdef TRACE_LOGS
+				for (int row = 0; row < k; row++)
+				{
+					for (int col = 0; col < m; col++)
+					{
+						printf("%f ", B_ptr[row][col]);
+					}
+					printf("\n");
+				}
+		#endif
+
+				// initializing matrix C
+				for (int row = 0; row < n; row++)
+				{
+					for (int col = 0; col < m; col++)
+					{
+						C_cpu_ptr[row][col] = 0.0;
+						C_glob_ptr[row][col] = 0.0;
+						C_shar_ptr[row][col] = 0.0;
+					}
+				}
+
+				kernel_times[execution_counter][0] = (float) execution_counter;
+
+		#ifdef EXECUTE_ON_CPU
+				// execute kernel matmul_rec_cpu
+				printf("if: kernel_times[%d][1] = %f\n", execution_counter);
+				kernel_times[execution_counter][1] = matmul_rec_cpu(A_ptr, B_ptr, C_cpu_ptr, n, k, m);
+		#else
+		//		printf("else: kernel_times[%d][1] = 0.0\n", execution_counter);
+				kernel_times[execution_counter][1] = 0.0;
+		#endif
+				// execute kernel matmul_rec_glob
+				kernel_times[execution_counter][2] = host_matmul_rec_glob(A_ptr, B_ptr, C_glob_ptr, n, k, m);
+				// execute kernel matmul_rec_shar
+				kernel_times[execution_counter][3] = host_matmul_rec_shar(A_ptr, B_ptr, C_shar_ptr, n, k, m);
+
+				// check for mismatches between C_cpu_ptr, C_glob_ptr, and C_shar_ptr
+				printf(
+						">> Checking for any mismatches between C_cpu, C_glob and C_shar...\n");
+		#ifdef EXECUTE_ON_CPU
+				for(int row = 0; row < n; row++)
+				{
+					for(int col = 0; col < m; col++)
+					{
+						if(C_cpu_ptr[row][col] != C_glob_ptr[row][col])
+						{
+							printf("A mismatch occurs between C_cpu and C_glob in element at coordinate (%d,%d).\n", row, col);
+							return 1;
+						}
+						else if(C_cpu_ptr[row][col] != C_shar_ptr[row][col])
+						{
+							printf("A mismatch occurs between C_cpu and C_shar in element at coordinate (%d,%d).\n", row, col);
+							return 1;
+						}
+					}
+				}
+		#else
+				for (int row = 0; row < n; row++)
+				{
+					for (int col = 0; col < m; col++)
+					{
+						if (C_glob_ptr[row][col] != C_shar_ptr[row][col])
+						{
+							printf(
+									"A mismatch occurs between C_glob and C_shar in element at coordinate (%d,%d).\n",
+									row, col);
+							return 1;
+						}
+					}
+				}
+		#endif
+				printf(">> Resulting matrices matched...\n");
+
+				// free memory allocation for A, B, C_glob and C_shar
+				free(A_ptr);
+				free(B_ptr);
+				free(C_cpu_ptr);
+				free(C_glob_ptr);
+				free(C_shar_ptr);
+
+			}
+
+		#ifdef WRITE_RUNNING_TIMES_TO_FILE
+			// write to CSV file the execution time of each kernel for current iteration
+			printf(">> Writing execution time of each kernel into CSV file...\n\n");
+			exec_code = WriteRunningTimesToFile((float*) kernel_times,
+					execution_count, n, k, m, "aborot-exer2.csv", FILE_WRITE_MODE);
+			if (exec_code == 1)
+			{
+				return EXIT_FAILURE;
+			}
+		#endif
+
+			// record average execution times
+			float total_cpu_time = 0.0;
+			float total_glob_time = 0.0;
+			float total_shar_time = 0.0;
+			for (int i = 0; i < execution_count; ++i)
+			{
+				total_cpu_time += kernel_times[i][1];
+				total_glob_time += kernel_times[i][2];
+				total_shar_time += kernel_times[i][3];
+			}
+		//	printf("total_cpu_time: %f ms | total_glob_time: %f ms | total_shar_time: %f ms\n", total_cpu_time, total_glob_time, total_shar_time);
+			average_times[step_counter][0] = step_counter;
+			average_times[step_counter][1] = total_cpu_time / (float) execution_count;
+			average_times[step_counter][2] = total_glob_time / (float) execution_count;
+			average_times[step_counter][3] = total_shar_time / (float) execution_count;
+
+			n += step_increase;
+			m += step_increase;
+			k += step_increase;
+		}
+		// write to average kernel execution times to file
+		#ifdef WRITE_AVERAGE_TIMES_TO_FILE
+			printf(
+					"Writing average execution times of each kernel per dimension n, m...\n");
+			for (int i = 0; i < step_count; ++i)
+			{
+				printf("iter #%d >> CPU: %f ms | Global: %f ms, Shared: %f ms\n", (int) average_times[i][0], average_times[i][1],
+								average_times[i][2], average_times[i][3]);
+			}
+			exec_code = WriteAverageTimesToFile((float*) average_times, step_count,
+					"aborot-exer2.csv", FILE_WRITE_MODE);
+			if (exec_code == 1)
+			{
+				return EXIT_FAILURE;
+			}
+		#endif
+
+		printf(">> End");
+		return EXIT_SUCCESS;
+	}
+
+#else
+	int main(void){
+		printf("Specify number of rows of A: ");
+		scanf("%d", &n);
+		printf("Specify number of columns of B: ");
+		scanf("%d", &m);
+		printf("Specify number of columns of A and number of rows of B: ");
+		scanf("%d", &k);
+		printf("Specify number of times to execute the computation: ");
+		scanf("%d", &execution_count);
+		printf("n: %d, k: %d, m: %d, execution_count: %d\n", n, k, m, execution_count);
+
+		// start computation
+		float kernel_times[execution_count][4];
+		for (int execution_counter = 0; execution_counter < execution_count; ++execution_counter)
+		{
+			/*
+			 * Allocate memory locations in host.
+			 */
+			float** A_ptr = (float**) malloc(n * sizeof(float*));
+			for (int i = 0; i < n; ++i)
+			{
+				A_ptr[i] = (float*) malloc(k * sizeof(float));
+			}
+
+			float** B_ptr = (float**) malloc(k * sizeof(float*));
+			for (int i = 0; i < k; ++i)
+			{
+				B_ptr[i] = (float*) malloc(m * sizeof(float));
+			}
+
+			float** C_cpu_ptr = (float**) malloc(n * sizeof(float*));
+			for (int i = 0; i < n; ++i)
+			{
+				C_cpu_ptr[i] = (float*) malloc(m * sizeof(float));
+			}
+
+			float** C_glob_ptr = (float**) malloc(n * sizeof(float*));
+			for (int i = 0; i < n; ++i)
+			{
+				C_glob_ptr[i] = (float*) malloc(m * sizeof(float));
+			}
+
+			float** C_shar_ptr = (float**) malloc(n * sizeof(float*));
+			for (int i = 0; i < n; ++i)
+			{
+				C_shar_ptr[i] = (float*) malloc(m * sizeof(float));
+			}
 
 			// randomly generate matrix A with dimension n x k
 			printf(">> Generating random matrix A...\n");
@@ -784,7 +1279,7 @@ int main(void)
 				}
 			}
 
-#ifdef TRACE_LOGS
+	#ifdef TRACE_LOGS
 			for (int row = 0; row < n; row++)
 			{
 				for (int col = 0; col < k; col++)
@@ -793,7 +1288,7 @@ int main(void)
 				}
 				printf("\n");
 			}
-#endif
+	#endif
 
 			// randomly generate matrix B with dimension k x m
 			printf(">> Generating random matrix B...\n");
@@ -805,7 +1300,7 @@ int main(void)
 					B_ptr[row][col] = (float) (rand() % 100);
 				}
 			}
-#ifdef TRACE_LOGS
+	#ifdef TRACE_LOGS
 			for (int row = 0; row < k; row++)
 			{
 				for (int col = 0; col < m; col++)
@@ -814,7 +1309,7 @@ int main(void)
 				}
 				printf("\n");
 			}
-#endif
+	#endif
 
 			// initializing matrix C
 			for (int row = 0; row < n; row++)
@@ -827,65 +1322,25 @@ int main(void)
 				}
 			}
 
-			// call function for multiplying matrices A and B using CPU only
-			printf(">> Executing computation on CPU...\n");
-#ifdef EXECUTE_ON_CPU
-			kernel_times[execution_counter][1] = matmul_rec_cpu((float**) A_ptr, (float**) B_ptr, (float**) C_cpu_ptr, n, k, m);
-#else
+			kernel_times[execution_counter][0] = (float) execution_counter;
+
+	#ifdef EXECUTE_ON_CPU
+			// execute kernel matmul_rec_cpu
+			printf("if: kernel_times[%d][1] = %f\n", execution_counter);
+			kernel_times[execution_counter][1] = matmul_rec_cpu(A_ptr, B_ptr, C_cpu_ptr, n, k, m);
+	#else
+	//		printf("else: kernel_times[%d][1] = 0.0\n", execution_counter);
 			kernel_times[execution_counter][1] = 0.0;
-#endif
+	#endif
+			// execute kernel matmul_rec_glob
+			kernel_times[execution_counter][2] = host_matmul_rec_glob(A_ptr, B_ptr, C_glob_ptr, n, k, m);
+			// execute kernel matmul_rec_shar
+			kernel_times[execution_counter][3] = host_matmul_rec_shar(A_ptr, B_ptr, C_shar_ptr, n, k, m);
 
-#ifdef TRACE_LOGS
-			printf("C_cpu:\n");
-			for(int row = 0; row < n; row++)
-			{
-				for(int col = 0; col < m; col++)
-				{
-					printf("%f ", C_cpu_ptr[row][col]);
-				}
-				printf("\n");
-			}
-#endif
-
-			// call intermediate function for multiplying matrices A and B using global memory
-			printf(
-					">> Executing intermediate function for kernel function matmul_rec_glob...\n");
-			kernel_times[execution_counter][2] = host_matmul_rec_glob(
-					(float**) A_ptr, (float**) B_ptr, (float**) C_glob_ptr, n,
-					k, m); // using pointers
-#ifdef TRACE_LOGS
-					printf("C_glob:\n");
-					for(int row = 0; row < n; row++)
-					{
-						for(int col = 0; col < m; col++)
-						{
-							printf("%f ", C_glob_ptr[row][col]);
-						}
-						printf("\n");
-					}
-#endif
-
-			// call intermediate function for multiplying matrices A and B using shared memory
-			printf(
-					">> Executing intermediate function for kernel function matmul_rec_shar...\n");
-			kernel_times[execution_counter][3] = host_matmul_rec_shar(
-					(float**) A_ptr, (float**) B_ptr, (float**) C_shar_ptr, n,
-					k, m); // using pointers
-#ifdef TRACE_LOGS
-					printf("C_shar:\n");
-					for(int row = 0; row < n; row++)
-					{
-						for(int col = 0; col < m; col++)
-						{
-							printf("%f ", C_shar_ptr[row][col]);
-						}
-						printf("\n");
-					}
-#endif
-			// check for mismatch between to output matrices
+			// check for mismatches between C_cpu_ptr, C_glob_ptr, and C_shar_ptr
 			printf(
 					">> Checking for any mismatches between C_cpu, C_glob and C_shar...\n");
-#ifdef EXECUTE_ON_CPU
+	#ifdef EXECUTE_ON_CPU
 			for(int row = 0; row < n; row++)
 			{
 				for(int col = 0; col < m; col++)
@@ -902,7 +1357,7 @@ int main(void)
 					}
 				}
 			}
-#else
+	#else
 			for (int row = 0; row < n; row++)
 			{
 				for (int col = 0; col < m; col++)
@@ -916,295 +1371,63 @@ int main(void)
 					}
 				}
 			}
-#endif
+	#endif
 			printf(">> Resulting matrices matched...\n");
+
+			// free memory allocation for A, B, C_glob and C_shar
+			free(A_ptr);
+			free(B_ptr);
+			free(C_cpu_ptr);
+			free(C_glob_ptr);
+			free(C_shar_ptr);
+
 		}
 
-		// free memory allocation for A, B, C_glob and C_shar
-		free(A_ptr);
-		free(B_ptr);
-		free(C_cpu_ptr);
-		free(C_glob_ptr);
-		free(C_shar_ptr);
-
-#ifdef WRITE_RUNNING_TIMES_TO_FILE
+	#ifdef WRITE_RUNNING_TIMES_TO_FILE
 		// write to CSV file the execution time of each kernel for current iteration
 		printf(">> Writing execution time of each kernel into CSV file...\n\n");
-		exec_code = WriteRunningTimesToFile((float* ) kernel_times,
+		exec_code = WriteRunningTimesToFile((float*) kernel_times,
 				execution_count, n, k, m, "aborot-exer2.csv", FILE_WRITE_MODE);
 		if (exec_code == 1)
 		{
 			return EXIT_FAILURE;
 		}
-#endif
-		// compute for average execution time of kernel functions for current n and m
-		float total_times_cpu = 0.0;
-		float total_times_glob = 0.0;
-		float total_times_shar = 0.0;
-		for (int i = 0; i < execution_count; i++)
+	#endif
+
+		// record average execution times
+		float total_cpu_time = 0.0;
+		float total_glob_time = 0.0;
+		float total_shar_time = 0.0;
+		for (int i = 0; i < execution_count; ++i)
 		{
-			total_times_cpu += kernel_times[i][1];
-			total_times_glob += kernel_times[i][2];
-			total_times_shar += kernel_times[i][3];
-		}
-		average_times[power_counter - 1][0] = pow(2, power_counter);
-		average_times[power_counter - 1][1] = total_times_cpu
-				/ (float) execution_count;
-		average_times[power_counter - 1][2] = total_times_glob
-				/ (float) execution_count;
-		average_times[power_counter - 1][3] = total_times_shar
-				/ (float) execution_count;
-
-		printf(
-				"\npower: %d | total_times_cpu: %f ms | total_times_glob: %f ms | total_times_shar: %f ms | average_cpu: %f ms | average_glob: %f ms | average_shar: %f ms\n\n",
-				power_counter, total_times_cpu, total_times_glob,
-				total_times_shar, average_times[power_counter - 1][1],
-				average_times[power_counter - 1][2],
-				average_times[power_counter - 1][3]);
-	}
-
-	// write to CSV file the average execution times for all n and m
-#ifdef WRITE_AVERAGE_TIMES_TO_FILE
-	printf(
-			"Writing average execution times of each kernel per dimension n, m...\n");
-	for (int i = 0; i < max_exponent; i++)
-	{
-		printf("n = m = %d: %f ms, %f ms, %f ms\n", (int) average_times[i][0],
-				average_times[i][1], average_times[i][2], average_times[i][3]);
-	}
-	exec_code = WriteAverageTimesToFile((float* ) average_times, max_exponent,
-			"aborot-exer2.csv", FILE_WRITE_MODE);
-	if (exec_code == 1)
-	{
-		return EXIT_FAILURE;
-	}
-#endif
-
-	printf(">> End.\n");
-
-	return EXIT_SUCCESS;
-}
-#else
-int main(void)
-{
-	int n, k, m, n_init, n_last, execution_count, exec_code;
-	time_t t;
-
-	printf("Specify initial row count n: ");
-	scanf("%d", &n_init);
-	printf("Specify final row count n: ");
-	scanf("%d", &n_last);
-
-	printf("Specify initial row count n: ");
-	scanf("%d", &m_init);
-	printf("Specify final row count n: ");
-	scanf("%d", &m_last);
-
-	printf("Specify number of rows of A: ");
-	scanf("%d", &n);
-	printf("Specify number of columns of B: ");
-	scanf("%d", &m);
-	printf("Specify number of columns of A and number of rows of B: ");
-	scanf("%d", &k);
-	printf("Specify number of times to execute the computation: ");
-	scanf("%d", &execution_count);
-	printf("n: %d, k: %d, m: %d, execution_count: %d\n", n, k, m, execution_count);
-
-	float kernel_times[execution_count][4];
-	float average_times[execution_count][4];
-
-	for (int execution_counter = 0; execution_counter < execution_count; ++execution_counter)
-	{
-		/*
-		 * Allocate memory locations in host.
-		 */
-		float** A_ptr = (float**) malloc(n * sizeof(float*));
-		for (int i = 0; i < n; ++i)
-		{
-			A_ptr[i] = (float*) malloc(k * sizeof(float));
+			total_cpu_time += kernel_times[i][1];
+			total_glob_time += kernel_times[i][2];
+			total_shar_time += kernel_times[i][3];
 		}
 
-		float** B_ptr = (float**) malloc(k * sizeof(float*));
-		for (int i = 0; i < k; ++i)
-		{
-			B_ptr[i] = (float*) malloc(m * sizeof(float));
-		}
+		average_times[0][0] = step_counter;
+		average_times[0][1] = total_cpu_time / (float) execution_count;
+		average_times[0][2] = total_glob_time / (float) execution_count;
+		average_times[0][3] = total_shar_time / (float) execution_count;
 
-		float** C_cpu_ptr = (float**) malloc(n * sizeof(float*));
-		for (int i = 0; i < n; ++i)
-		{
-			C_cpu_ptr[i] = (float*) malloc(m * sizeof(float));
-		}
-
-		float** C_glob_ptr = (float**) malloc(n * sizeof(float*));
-		for (int i = 0; i < n; ++i)
-		{
-			C_glob_ptr[i] = (float*) malloc(m * sizeof(float));
-		}
-
-		float** C_shar_ptr = (float**) malloc(n * sizeof(float*));
-		for (int i = 0; i < n; ++i)
-		{
-			C_shar_ptr[i] = (float*) malloc(m * sizeof(float));
-		}
-
-		// randomly generate matrix A with dimension n x k
-		printf(">> Generating random matrix A...\n");
-		srand((unsigned) time(&t));
-		for (int row = 0; row < n; row++)
-		{
-			for (int col = 0; col < k; col++)
+		// write to average kernel execution times to file
+		#ifdef WRITE_AVERAGE_TIMES_TO_FILE
+			printf(
+					"Writing average execution times of each kernel per dimension n, m...\n");
+			for (int i = 0; i < step_count; ++i)
 			{
-				A_ptr[row][col] = (float) (rand() % 101);
+				printf("iter #%d >> CPU: %f ms | Global: %f ms, Shared: %f ms\n", (int) average_times[i][0], average_times[i][1],
+								average_times[i][2], average_times[i][3]);
 			}
-		}
-
-#ifdef TRACE_LOGS
-		for (int row = 0; row < n; row++)
-		{
-			for (int col = 0; col < k; col++)
+			exec_code = WriteAverageTimesToFile((float*) average_times, step_count,
+					"aborot-exer2.csv", FILE_WRITE_MODE);
+			if (exec_code == 1)
 			{
-				printf("%f ", A_ptr[row][col]);
+				return EXIT_FAILURE;
 			}
-			printf("\n");
-		}
-#endif
+		#endif
 
-		// randomly generate matrix B with dimension k x m
-		printf(">> Generating random matrix B...\n");
-		srand((unsigned) time(&t));
-		for (int row = 0; row < k; row++)
-		{
-			for (int col = 0; col < m; col++)
-			{
-				B_ptr[row][col] = (float) (rand() % 100);
-			}
-		}
-#ifdef TRACE_LOGS
-		for (int row = 0; row < k; row++)
-		{
-			for (int col = 0; col < m; col++)
-			{
-				printf("%f ", B_ptr[row][col]);
-			}
-			printf("\n");
-		}
-#endif
-
-		// initializing matrix C
-		for (int row = 0; row < n; row++)
-		{
-			for (int col = 0; col < m; col++)
-			{
-				C_cpu_ptr[row][col] = 0.0;
-				C_glob_ptr[row][col] = 0.0;
-				C_shar_ptr[row][col] = 0.0;
-			}
-		}
-
-		kernel_times[execution_counter][0] = (float) execution_counter;
-
-#ifdef EXECUTE_ON_CPU
-		// execute kernel matmul_rec_cpu
-		printf("if: kernel_times[%d][1] = %f\n", execution_counter);
-		kernel_times[execution_counter][1] = matmul_rec_cpu(A_ptr, B_ptr, C_cpu_ptr, n, k, m);
-#else
-//		printf("else: kernel_times[%d][1] = 0.0\n", execution_counter);
-		kernel_times[execution_counter][1] = 0.0;
-#endif
-		// execute kernel matmul_rec_glob
-		kernel_times[execution_counter][2] = host_matmul_rec_glob(A_ptr, B_ptr, C_glob_ptr, n, k, m);
-		// execute kernel matmul_rec_shar
-		kernel_times[execution_counter][3] = host_matmul_rec_shar(A_ptr, B_ptr, C_shar_ptr, n, k, m);
-
-		// check for mismatches between C_cpu_ptr, C_glob_ptr, and C_shar_ptr
-		printf(
-				">> Checking for any mismatches between C_cpu, C_glob and C_shar...\n");
-#ifdef EXECUTE_ON_CPU
-		for(int row = 0; row < n; row++)
-		{
-			for(int col = 0; col < m; col++)
-			{
-				if(C_cpu_ptr[row][col] != C_glob_ptr[row][col])
-				{
-					printf("A mismatch occurs between C_cpu and C_glob in element at coordinate (%d,%d).\n", row, col);
-					return 1;
-				}
-				else if(C_cpu_ptr[row][col] != C_shar_ptr[row][col])
-				{
-					printf("A mismatch occurs between C_cpu and C_shar in element at coordinate (%d,%d).\n", row, col);
-					return 1;
-				}
-			}
-		}
-#else
-		for (int row = 0; row < n; row++)
-		{
-			for (int col = 0; col < m; col++)
-			{
-				if (C_glob_ptr[row][col] != C_shar_ptr[row][col])
-				{
-					printf(
-							"A mismatch occurs between C_glob and C_shar in element at coordinate (%d,%d).\n",
-							row, col);
-					return 1;
-				}
-			}
-		}
-#endif
-		printf(">> Resulting matrices matched...\n");
-
-		// free memory allocation for A, B, C_glob and C_shar
-		free(A_ptr);
-		free(B_ptr);
-		free(C_cpu_ptr);
-		free(C_glob_ptr);
-		free(C_shar_ptr);
-
+		printf(">> End");
+		return EXIT_SUCCESS;
 	}
-
-#ifdef WRITE_RUNNING_TIMES_TO_FILE
-	// write to CSV file the execution time of each kernel for current iteration
-	printf(">> Writing execution time of each kernel into CSV file...\n\n");
-	exec_code = WriteRunningTimesToFile((float*) kernel_times,
-			execution_count, n, k, m, "aborot-exer2.csv", FILE_WRITE_MODE);
-	if (exec_code == 1)
-	{
-		return EXIT_FAILURE;
-	}
-#endif
-
-	// record average execution times
-	float total_cpu_time = 0.0;
-	float total_glob_time = 0.0;
-	float total_shar_time = 0.0;
-	for (int i = 0; i < execution_count; ++i)
-	{
-		total_cpu_time += kernel_times[i][1];
-		total_glob_time += kernel_times[i][2];
-		total_shar_time += kernel_times[i][3];
-	}
-//	printf("total_cpu_time: %f ms | total_glob_time: %f ms | total_shar_time: %f ms\n", total_cpu_time, total_glob_time, total_shar_time);
-	average_times[0][0] = 0;
-	average_times[0][1] = total_cpu_time / (float) execution_count;
-	average_times[0][2] = total_glob_time / (float) execution_count;
-	average_times[0][3] = total_shar_time / (float) execution_count;
-
-	// write to average kernel execution times to file
-#ifdef WRITE_AVERAGE_TIMES_TO_FILE
-	printf(
-			"Writing average execution times of each kernel per dimension n, m...\n");
-	printf("CPU: %f ms | Global: %f ms, Shared: %f ms\n", average_times[0][1],
-			average_times[0][2], average_times[0][3]);
-	exec_code = WriteAverageTimesToFile((float*) average_times, 1,
-			"aborot-exer2.csv", FILE_WRITE_MODE);
-	if (exec_code == 1)
-	{
-		return EXIT_FAILURE;
-	}
-#endif
-
-	printf(">> End");
-	return EXIT_SUCCESS;
-}
 #endif
